@@ -18,8 +18,11 @@ export const AuthGuard: CanActivateFn = (
   return inject(AuthService).user.pipe(
     take(1),
     map((user) => {
-      if (!!user) return true;
-      else return router.createUrlTree(['/auth']);
+      const isAuth = !!user;
+      if (isAuth) {
+        return true;
+      }
+      return router.createUrlTree(['/auth']);
     })
   );
 };

@@ -15,7 +15,7 @@ export class AuthComponent implements OnDestroy {
   isSignupMode = true;
   isLoading = false;
   error: string = null;
-  private closeSub: Subscription;
+  private closeSub: Subscription = new Subscription();
 
   constructor(private authService: AuthService, private router: Router) {}
   @ViewChild('authForm') authForm: NgForm;
@@ -28,31 +28,33 @@ export class AuthComponent implements OnDestroy {
     this.error = null;
   }
   onSubmit() {
-    let authObs: Observable<AuthResponse>;
     if (!this.authForm.valid) {
       return;
+    }
+    let authObs: Observable<AuthResponse>;
+    const email = this.authForm.value.email;
+    const password = this.authForm.value.password;
+    this.isLoading = true;
+    if (this.isSignupMode) {
+      authObs = this.authService.signUp(email, password);
     } else {
-      const email = this.authForm.value.email;
-      const password = this.authForm.value.password;
-      this.isLoading = true;
-      this.isSignupMode
-        ? (authObs = this.authService.signUp(email, password))
-        : (authObs = this.authService.login(email, password));
+      authObs = this.authService.login(email, password);
     }
     authObs.subscribe(
       (resData) => {
         console.log(resData);
         this.isLoading = false;
-        this.error = null;
-        this.router.navigate(['recepie']);
+        this.router.navigate(['/recepie']);
       },
-      (error) => {
-        console.log(error);
-        this.error = error;
-        this.createErrorComponent(error);
+      (errorMessage) => {
+        console.log(errorMessage);
+        this.error = errorMessage;
+        this.createErrorComponent(errorMessage);
         this.isLoading = false;
       }
     );
+
+    this.authForm.reset();
   }
 
   private createErrorComponent(message: string) {
@@ -60,10 +62,12 @@ export class AuthComponent implements OnDestroy {
     alertElementRef.clear();
     const elementRef = alertElementRef.createComponent(AlertComponent);
     elementRef.instance.message = message;
-    this.closeSub = elementRef.instance.closed.subscribe(() => {
-      this.closeSub.unsubscribe();
-      alertElementRef.clear();
-    });
+    this.closeSub.add(
+      elementRef.instance.closed.subscribe(() => {
+        this.closeSub.unsubscribe();
+        alertElementRef.clear();
+      })
+    );
   }
 
   ngOnDestroy(): void {
